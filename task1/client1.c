@@ -69,15 +69,16 @@ int main(int argc, char *argv[]) {
     target_time_msec = ((unsigned long int)time.tv_sec * 1000) + ((unsigned long int)time.tv_usec / 1000) + TIMEOUT_MS;
 
     while (1) {
-        for (port = 0; port < MAX_PORTS; port++) {
-            data[port] = readFromPort(&ports[port]);
-        }
-
         gettimeofday(&time, NULL);
         current_time_msec = ((unsigned long int)time.tv_sec * 1000) + ((unsigned long int)time.tv_usec / 1000);
 
         if (current_time_msec >= target_time_msec) {
             target_time_msec = current_time_msec + TIMEOUT_MS;
+
+            // Read all ports, starting with the slowest one
+            for (port = MAX_PORTS; port >= 0; --port) {
+                data[port] = readFromPort(&ports[port]);
+            }
 
             printf("{\"timestamp\": %lu, \"out1\": \"%s\", \"out2\": \"%s\", \"out3\": \"%s\"}\n",
                     current_time_msec, data[0], data[1], data[2]);
@@ -144,8 +145,9 @@ static int connectToPort(int port_number) {
         close(sockfd);
     }
 
-    // Set read timeout to 1ms
-    struct timeval timeout = {0, 1000};
+    // TODO: Adjust the timeout to get a balance between correct output and precise time interval
+    // Set read timeout to 25ms
+    struct timeval timeout = {0, 25000};
     if (setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout)) < 0) {
         perror("Invalid socket options");
     }

@@ -21,7 +21,6 @@
 #define BUFFER_SIZE     1024
 #define MAX_PORTS       3
 #define FIRST_PORT      4001
-#define IP_ADDR         "0.0.0.0"
 #define TIMEOUT_MS      100UL
 
 /**************************** Type Definitions *******************************/
@@ -35,7 +34,8 @@ struct port_t{
 
 static void error_exit(const char *msg);
 
-static int connectToPort(int port);
+static int findOpenPort(unsigned int port_number, struct sockaddr_in *server_addr);
+static int connectToPort(struct sockaddr_in *server_addr);
 static char *readFromPort(struct port_t *port) ;
 
 /************************** Variable Definitions *****************************/
@@ -62,11 +62,14 @@ int main(int argc, char *argv[]) {
     int port;
 
     for (port = 0; port < MAX_PORTS; port++) {
-        ports[port].sockfd = connectToPort(port + FIRST_PORT);
+        struct sockaddr_in server_addr;
+        if (findOpenPort(port + FIRST_PORT, &server_addr) < 0) {
+            error_exit("An open port could not be found");
+        }
+        
+        printf("Connecting to port %d...\n", port + FIRST_PORT);
+        ports[port].sockfd = connectToPort(&server_addr);
     }
-
-    gettimeofday(&time, NULL);
-    target_time_msec = ((unsigned long int)time.tv_sec * 1000) + ((unsigned long int)time.tv_usec / 1000) + TIMEOUT_MS;
 
     while (1) {
         gettimeofday(&time, NULL);
@@ -115,32 +118,69 @@ static void error_exit(const char *msg) {
 * @brief    Connects to the given port
 *
 * @param	port_number - port number
+* @param	[out] server_addr - the structure describing an Internet socket address
+*
+* @return	0 if given port is found, otherwise -1
+*
+* @note		None
+*
+**************************************************************************/
+static int findOpenPort(unsigned int port_number, struct sockaddr_in *server_addr) {
+    FILE *fp = fopen("/proc/net/tcp", "r");
+    if (!fp) {
+        error_exit("Unable to open /proc/net/tcp");
+    }
+
+    char line[256];
+    // Skip the first line (header)
+    fgets(line, sizeof(line), fp); 
+
+    while (fgets(line, sizeof(line), fp)) {
+        unsigned int local_ip_hex, remote_ip_hex;
+        unsigned int local_port, remote_port;
+        unsigned int state;
+
+        // Extract local and remote addresses, ports, and the connection state
+        sscanf(line, "%*d: %8X:%4X %8X:%4X %2X", &local_ip_hex, &local_port, &remote_ip_hex, &remote_port, &state);
+
+        // If port found and it is opened
+        if (local_port == port_number && state == 0x0a) {
+            // Set up server address structure
+            server_addr->sin_family = AF_INET;
+            server_addr->sin_port = htons(local_port);
+            server_addr->sin_addr.s_addr = htonl(local_ip_hex);
+
+            fclose(fp);
+            return 0;
+        }
+    }
+
+    fclose(fp);
+    return -1;
+}
+
+/**************************************************************************/
+/**
+*
+* @brief    Connects to the given port
+*
+* @param	server_addr - a pointer to the structure describing an Internet socket address
 *
 * @return	file descriptor
 *
 * @note		None
 *
 **************************************************************************/
-static int connectToPort(int port_number) {
-    struct sockaddr_in server_addr;
+static int connectToPort(struct sockaddr_in *server_addr) {
     int sockfd;
-
-    printf("Connecting to port %d...\n", port_number);
 
     // Create socket
     if ((sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
         error_exit("Socket creation failed");
     }
 
-    // Set up server address structure
-    server_addr.sin_family = AF_INET;
-    server_addr.sin_port = htons(port_number);
-    if (inet_pton(AF_INET, IP_ADDR, &server_addr.sin_addr) <= 0) {
-        error_exit("Invalid address or address not supported");
-    }
-
     // Connect to server
-    if (connect(sockfd, (struct sockaddr*)&server_addr, sizeof(server_addr)) < 0) {
+    if (connect(sockfd, (struct sockaddr*)server_addr, sizeof(struct sockaddr_in)) < 0) {
         perror("Connection failed");
         close(sockfd);
     }
@@ -180,6 +220,7 @@ static char *readFromPort(struct port_t *port) {
         } else {
             data_p = &port->buffer[bytes_received - 4];
         }
+        //printf("Received: %d\n", bytes_received);
     } else {
         // Set value as '--' if no data received
         port->buffer[0] = port->buffer[1] = '-';

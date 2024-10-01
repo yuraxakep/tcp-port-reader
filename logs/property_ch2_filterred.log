@@ -1,0 +1,4 @@
+2.14: enabled=1
+2.170: amplitude=5000
+2.255: frequency=250
+2.300: glitch_chance=5

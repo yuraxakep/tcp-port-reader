@@ -1,6 +1,6 @@
 /*****************************************************************************/
 /**
-*  Brief: 	Reads data from TCP ports 4001 ... 4003 and prints it to standard output every 20 ms,
+*  Brief: 	Reads data from TCP ports 4001 ... 4003 and prints it to STDOUT every 20 ms,
             changes the behavior of port 4001 based on data from port 4003.
 *
 *  Created: 01.10.2024
@@ -27,6 +27,8 @@
 #define UDP_PORT        4000
 #define TIMEOUT_MS      20UL
 #define MSG_MAX_SIZE    4
+
+// #define PRINT_TO_FILE   1   // Uncomment to print to file instead of STDOUT
 
 /**************************** Type Definitions *******************************/
 
@@ -88,11 +90,18 @@ static inline void changeBehavior(char *data, int udp_sokfd, struct sockaddr_in 
 int main(int argc, char *argv[]) {
     struct port_t ports[MAX_PORTS];
     pthread_t thread_id[MAX_PORTS];
-    struct sockaddr_in tcp_server_addr;
-    struct sockaddr_in udp_server_addr;
+    struct sockaddr_in tcp_server_addr, udp_server_addr;
     struct timeval time;
     unsigned long int target_time_msec, current_time_msec;
     int port, udp_sokfd;
+    FILE *out = stdout;
+
+#ifdef PRINT_TO_FILE
+    out = fopen("client2.log", "w");
+    if (!out) {
+        error_exit("Unable to open file");
+    }
+#endif
 
     for (port = 0; port < MAX_PORTS; port++) {
         struct sockaddr_in tcp_server_addr;
@@ -124,7 +133,7 @@ int main(int argc, char *argv[]) {
             pthread_join(thread_id[2], NULL);
             
             changeBehavior(ports[2].data_ptr, udp_sokfd, &udp_server_addr);
-            printf("{\"timestamp\": %lu, \"out1\": \"%s\", \"out2\": \"%s\", \"out3\": \"%s\"}\n",
+            fprintf(out, "{\"timestamp\": %lu, \"out1\": \"%s\", \"out2\": \"%s\", \"out3\": \"%s\"}\n",
                     current_time_msec, ports[0].data_ptr, ports[1].data_ptr, ports[2].data_ptr);
         }
     }
@@ -132,6 +141,11 @@ int main(int argc, char *argv[]) {
     for (port = 0; port < MAX_PORTS; port++) {
         close(ports[port].sockfd);
     }
+    close(udp_sokfd);
+
+#ifdef PRINT_TO_FILE
+    fclose(out);
+#endif
 
     return 0;
 }

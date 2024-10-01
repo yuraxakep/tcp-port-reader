@@ -23,6 +23,8 @@
 #define FIRST_PORT      4001
 #define TIMEOUT_MS      100UL
 
+// #define PRINT_TO_FILE   1   // Uncomment to print to file instead of STDOUT
+
 /**************************** Type Definitions *******************************/
 
 struct port_t{
@@ -60,6 +62,14 @@ int main(int argc, char *argv[]) {
     struct timeval time;
     unsigned long int target_time_msec, current_time_msec;
     int port;
+    FILE *out = stdout;
+
+#ifdef PRINT_TO_FILE
+    out = fopen("client1.log", "w");
+    if (!out) {
+        error_exit("Unable to open file");
+    }
+#endif
 
     for (port = 0; port < MAX_PORTS; port++) {
         struct sockaddr_in server_addr;
@@ -83,7 +93,7 @@ int main(int argc, char *argv[]) {
                 data[port] = readFromPort(&ports[port]);
             }
 
-            printf("{\"timestamp\": %lu, \"out1\": \"%s\", \"out2\": \"%s\", \"out3\": \"%s\"}\n",
+            fprintf(out, "{\"timestamp\": %lu, \"out1\": \"%s\", \"out2\": \"%s\", \"out3\": \"%s\"}\n",
                     current_time_msec, data[0], data[1], data[2]);
         }
     }
@@ -91,6 +101,10 @@ int main(int argc, char *argv[]) {
     for (port = 0; port < MAX_PORTS; port++) {
         close(ports[port].sockfd);
     }
+
+#ifdef PRINT_TO_FILE
+    fclose(out);
+#endif
 
     return 0;
 }
@@ -127,6 +141,8 @@ static void error_exit(const char *msg) {
 **************************************************************************/
 static int findOpenPort(unsigned int port_number, struct sockaddr_in *server_addr) {
     FILE *fp = fopen("/proc/net/tcp", "r");
+    int status = -1;
+
     if (!fp) {
         error_exit("Unable to open /proc/net/tcp");
     }
@@ -150,13 +166,13 @@ static int findOpenPort(unsigned int port_number, struct sockaddr_in *server_add
             server_addr->sin_port = htons(local_port);
             server_addr->sin_addr.s_addr = htonl(local_ip_hex);
 
-            fclose(fp);
-            return 0;
+            status = 0;
+            break;
         }
     }
 
     fclose(fp);
-    return -1;
+    return status;
 }
 
 /**************************************************************************/

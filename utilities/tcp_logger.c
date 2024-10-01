@@ -2,7 +2,7 @@
 /**
 *  Brief: 	Reads data from the given TCP port and stores log into a file.
 *
-*  Created: 28.09.2024
+*  Created: 29.09.2024
 *  Author: 	Yurii Shenbor
 *
 ******************************************************************************/
@@ -48,18 +48,18 @@ static int connectToPort(struct sockaddr_in *server_addr);
 **************************************************************************/
 int main(int argc, char *argv[]) {
     if (argc != 3) {
-        fprintf(stderr, "Usage: %s <Port> <Samples>\n", argv[0]);
+        fprintf(stderr, "Usage: %s <Port> <Duration_sec>\n", argv[0]);
         exit(EXIT_FAILURE);
     }
 
     char buffer[BUFFER_SIZE];
     struct timeval time;
-    unsigned long int current_time_msec;
+    unsigned long int current_time_msec, duration_msec;
     int bytes_received = 0;
     int sample = 0;
 
     int port_number = atoi(argv[1]);
-    int samples = atoi(argv[2]);
+    int duration_sec = atoi(argv[2]);
 
     struct sockaddr_in server_addr;
     if (findOpenPort(port_number, &server_addr) < 0) {
@@ -77,6 +77,10 @@ int main(int argc, char *argv[]) {
         error_exit("Unable to open file");
     }
 
+    gettimeofday(&time, NULL);
+    duration_msec = ((unsigned long int)time.tv_sec * 1000) + ((unsigned long int)time.tv_usec / 1000) + 
+                    ((unsigned long int)duration_sec * 1000);
+
     while (1) {
         bytes_received = recv(sockfd, buffer, sizeof(buffer) - 1, 0);
         if (bytes_received > 0) {
@@ -86,7 +90,7 @@ int main(int argc, char *argv[]) {
             current_time_msec = ((unsigned long int)time.tv_sec * 1000) + ((unsigned long int)time.tv_usec / 1000);
             fprintf(fp, "{\"timestamp\": %lu, \"data\": \"%s\"}\n", current_time_msec, buffer);
 
-            if (sample++ >= samples){
+            if (current_time_msec >= duration_msec){
                 break;
             }
         }

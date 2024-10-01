@@ -28,13 +28,29 @@ with open(input_file_name, 'r') as file:
         value_list.append(float(data_point['data']))
 
 # Calculate amplitude
-amplitude = 'Amplitude(V): ' + str(max(value_list) - min(value_list))
+max_val = max(value_list)
+min_val = min(value_list)
+if max_val > -min_val:
+    amp_val = max_val
+else:
+    amp_val = -min_val
+amplitude = 'Amplitude(V): ' + str(amp_val)
 
 # Calculate frequency
+start = None
 period = 0
-for i in range(1, len(time_list)):
-    period += time_list[i] - time_list[i - 1]
-period //= len(time_list)
+samples = 0
+for i in range(0, len(value_list)):
+    if start == None and value_list[i] == min_val:
+        start = time_list[i]
+    if start != None and value_list[i] == max_val:
+        period += (time_list[i] - start)
+        start = None
+        samples += 1
+
+if samples != 0:
+    period //= samples
+period *= 2
 frequency = 'Frequency(Hz):' + str(round(1000 / period, 2))
 
 # Convert timestamp to time scale

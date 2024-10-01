@@ -182,9 +182,9 @@ static void error_exit(const char *msg) {
 *
 **************************************************************************/
 static inline void changeBehavior(char *data, int udp_sokfd, struct sockaddr_in *udp_server_addr) {
-    static int last_value = 0;
+    static int last_value = 3;
 
-    if (data != "--") {
+    if (data[1] != '-') {
         int current_value = atoi(data);
         
         if (last_value != current_value) {

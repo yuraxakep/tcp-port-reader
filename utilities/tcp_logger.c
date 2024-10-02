@@ -9,30 +9,7 @@
 
 /***************************** Include Files ********************************/
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
-#include <arpa/inet.h>
-#include <sys/time.h>
-
-/************************** Constant Definitions *****************************/
-
-#define BUFFER_SIZE     1024
-
-/**************************** Type Definitions *******************************/
-
-
-/************************** Function Prototypes ******************************/
-
-static void error_exit(const char *msg);
-
-static int findOpenPort(unsigned int port_number, struct sockaddr_in *server_addr);
-static int connectToPort(struct sockaddr_in *server_addr);
-
-/************************** Variable Definitions *****************************/
-
-
+#include "../lib/client_lib.h"
 
 /**************************************************************************/
 /**
@@ -56,7 +33,6 @@ int main(int argc, char *argv[]) {
     struct timeval time;
     unsigned long int current_time_msec, duration_msec;
     int bytes_received = 0;
-    int sample = 0;
 
     int port_number = atoi(argv[1]);
     int duration_sec = atoi(argv[2]);
@@ -67,7 +43,7 @@ int main(int argc, char *argv[]) {
     }
     
     printf("Connecting to port %d...\n", port_number);
-    int sockfd = connectToPort(&server_addr);
+    int sockfd = connectToPort(&server_addr, 1);
 
     char file_name[32];
     strcpy(file_name, argv[1]);
@@ -100,106 +76,4 @@ int main(int argc, char *argv[]) {
     fclose(fp);
     close(sockfd);
     return 0;
-}
-
-/**************************************************************************/
-/**
-*
-* @brief    Helper function
-*
-* @param	msg - error message to print before exit
-*
-* @return	None
-*
-* @note		None
-*
-**************************************************************************/
-static void error_exit(const char *msg) {
-    perror(msg);
-    exit(EXIT_FAILURE);
-}
-
-/**************************************************************************/
-/**
-*
-* @brief    Connects to the given port
-*
-* @param	port_number - port number
-* @param	[out] server_addr - the structure describing an Internet socket address
-*
-* @return	0 if given port is found, otherwise -1
-*
-* @note		None
-*
-**************************************************************************/
-static int findOpenPort(unsigned int port_number, struct sockaddr_in *server_addr) {
-    FILE *fp = fopen("/proc/net/tcp", "r");
-    int status = -1;
-
-    if (!fp) {
-        error_exit("Unable to open /proc/net/tcp");
-    }
-
-    char line[256];
-    // Skip the first line (header)
-    fgets(line, sizeof(line), fp); 
-
-    while (fgets(line, sizeof(line), fp)) {
-        unsigned int local_ip_hex, remote_ip_hex;
-        unsigned int local_port, remote_port;
-        unsigned int state;
-
-        // Extract local and remote addresses, ports, and the connection state
-        sscanf(line, "%*d: %8X:%4X %8X:%4X %2X", &local_ip_hex, &local_port, &remote_ip_hex, &remote_port, &state);
-
-        // If port found and it is opened
-        if (local_port == port_number && state == 0x0a) {
-            // Set up server address structure
-            server_addr->sin_family = AF_INET;
-            server_addr->sin_port = htons(local_port);
-            server_addr->sin_addr.s_addr = htonl(local_ip_hex);
-
-            status = 0;
-            break;
-        }
-    }
-
-    fclose(fp);
-    return status;
-}
-
-/**************************************************************************/
-/**
-*
-* @brief    Connects to the given port
-*
-* @param	server_addr - a pointer to the structure describing an Internet socket address
-*
-* @return	file descriptor
-*
-* @note		None
-*
-**************************************************************************/
-static int connectToPort(struct sockaddr_in *server_addr) {
-    int sockfd;
-
-    // Create socket
-    if ((sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
-        error_exit("Socket creation failed");
-    }
-
-    // Connect to server
-    if (connect(sockfd, (struct sockaddr*)server_addr, sizeof(struct sockaddr_in)) < 0) {
-        perror("Connection failed");
-        close(sockfd);
-    }
-
-    // TODO: Adjust the timeout to get a balance between correct output and precise time interval
-    // Set read timeout to 25ms
-    struct timeval timeout = {0, 1};
-    if (setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout)) < 0) {
-        perror("Invalid socket options");
-    }
-
-    return sockfd;
 }

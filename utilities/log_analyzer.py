@@ -11,7 +11,7 @@ import json
 import sys
 
 if (len(sys.argv) != 2):
-    print("Usage: %s <Port>\n", sys.argv[0])
+    print("Usage: %s <path to port log file>\n", sys.argv[0])
     exit()
 
 input_file_name = str(sys.argv[1]) + '.log'
@@ -41,9 +41,11 @@ start = None
 period = 0
 samples = 0
 for i in range(0, len(value_list)):
-    if start == None and value_list[i] == min_val:
+    if start == None and (value_list[i] == min_val or 
+        (i < (len(value_list) - 2) and value_list[i + 1] > value_list[i])):
         start = time_list[i]
-    if start != None and value_list[i] == max_val:
+    if start != None and (value_list[i] == max_val or 
+        (i < (len(value_list) - 2) and value_list[i + 1] < value_list[i])):
         period += (time_list[i] - start)
         start = None
         samples += 1

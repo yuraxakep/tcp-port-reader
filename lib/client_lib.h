@@ -27,7 +27,6 @@
 #define MAX_PORTS       3
 #define TCP_PORT        4001
 #define UDP_PORT        4000
-#define MSG_MAX_SIZE    4
 
 /**************************** Type Definitions *******************************/
 
@@ -35,26 +34,6 @@ struct port_t {
     int sockfd;
     char *data_ptr;
     char buffer[BUFFER_SIZE];
-};
-
-enum operation_e {
-    READ = 1,
-    WRITE = 2
-};
-
-enum object_e {
-    CHANNEL_1 = 1,
-    CHANNEL_2 = 2,
-    CHANNEL_3 = 3
-};
-
-enum property_e {
-    ENABLED = 14,
-    MIN_DURATION = 42,  // For channel 3 only
-    MAX_DURATION = 43,  // For channel 3 only
-    AMPLITUDE = 170,
-    FREQUENCY = 255,
-    GLITCH_CHANCE = 300
 };
 
 /************************** Function Prototypes ******************************/
@@ -66,7 +45,6 @@ int connectToPort(struct sockaddr_in *tcp_server_addr, int timeout_ms);
 void readFromPort(struct port_t *port);
 void* readFromPortInThread(void *args);
 
-int makeMessage(enum operation_e op, enum object_e obj, enum property_e prop, uint16_t val, uint16_t *msg);
 int startServer(struct in_addr *sin_addr, int port, struct sockaddr_in *server_addr);
 void sendMessage(int sockfd, struct sockaddr_in *server_addr, uint16_t *msg, size_t size);
 void changeBehavior(char *data, int udp_sokfd, struct sockaddr_in *udp_server_addr);

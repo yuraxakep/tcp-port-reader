@@ -40,7 +40,7 @@ int main(int argc, char *argv[]) {
     FILE *out = stdout;
 
 #ifdef PRINT_TO_FILE
-    out = fopen("client2.log", "w");
+    out = fopen("logs/client2.log", "w");
     if (!out) {
         error_exit("Unable to open file");
     }
@@ -52,7 +52,7 @@ int main(int argc, char *argv[]) {
             error_exit("An open port could not be found");
         }
         
-        printf("Connecting to port %d...\n", port + TCP_PORT);
+        // printf("Connecting to port %d...\n", port + TCP_PORT);
         ports[port].sockfd = connectToPort(&tcp_server_addr, 10000);
     }
 

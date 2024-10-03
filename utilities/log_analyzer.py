@@ -21,11 +21,19 @@ time_list = []
 value_list = []
 
 print("Processing log file:", input_file_name)
-with open(input_file_name, 'r') as file:
-    for line in file:
-        data_point = json.loads(line.strip())
-        time_list.append(int(data_point['timestamp']))
-        value_list.append(float(data_point['data']))
+try:
+    with open(input_file_name, 'r') as file:
+        for line in file:
+            data_point = json.loads(line.strip())
+            time_list.append(int(data_point['timestamp']))
+            value_list.append(float(data_point['data']))
+
+except FileNotFoundError:
+    print(f"Error: The file {input_file_name} does not exist.")
+except json.decoder.JSONDecodeError:
+     print(f"JSON Decode Error: skipping line...")
+except Exception as e:
+    print(f"An error occurred: {e}")
 
 # Calculate amplitude
 max_val = max(value_list)

@@ -1,6 +1,6 @@
 /*****************************************************************************/
 /**
-*  Brief: 	Contains definition for the functions needed by client apps.
+*  Brief: 	Contains implementation of the functions needed by client apps.
 *
 *  Created: 02.10.2024
 *  Author: 	Yurii Shenbor
@@ -13,16 +13,33 @@
 
 /************************** Constant Definitions *****************************/
 
+#define MSG_MAX_SIZE    4
 
 /**************************** Type Definitions *******************************/
 
+enum operation_e {
+    READ = 1,
+    WRITE = 2
+};
+
+enum object_e {
+    CHANNEL_1 = 1,
+    CHANNEL_2 = 2,
+    CHANNEL_3 = 3
+};
+
+enum property_e {
+    ENABLED = 14,
+    MIN_DURATION = 42,  // For channel 3 only
+    MAX_DURATION = 43,  // For channel 3 only
+    AMPLITUDE = 170,
+    FREQUENCY = 255,
+    GLITCH_CHANCE = 300
+};
 
 /************************** Function Prototypes ******************************/
 
-
-/************************** Variable Definitions *****************************/
-
-static int last_value = 3;
+static int makeMessage(enum operation_e op, enum object_e obj, enum property_e prop, uint16_t val, uint16_t *msg);
 
 /**************************************************************************/
 /**
@@ -56,6 +73,8 @@ void error_exit(const char *msg) {
 *
 **************************************************************************/
 void changeBehavior(char *data, int udp_sokfd, struct sockaddr_in *udp_server_addr) {
+    static int last_value = 3;
+
     if (data[1] != '-') {
         int current_value = atoi(data);
         
@@ -95,7 +114,7 @@ void changeBehavior(char *data, int udp_sokfd, struct sockaddr_in *udp_server_ad
 * @note		None
 *
 **************************************************************************/
-int makeMessage(enum operation_e op, enum object_e obj, enum property_e prop, uint16_t val, uint16_t *msg) {
+static int makeMessage(enum operation_e op, enum object_e obj, enum property_e prop, uint16_t val, uint16_t *msg) {
     int size = 0;
 
     if (msg == NULL) {
@@ -122,7 +141,7 @@ int makeMessage(enum operation_e op, enum object_e obj, enum property_e prop, ui
 * @param	port_number - port number
 * @param	[out] server_addr - the structure describing an Internet socket address
 *
-* @return	0 if given port is found, otherwise -1
+* @return	Socket file descriptor
 *
 * @note		None
 *
@@ -154,11 +173,14 @@ int startServer(struct in_addr *sin_addr, int port, struct sockaddr_in *server_a
 *
 * @return	None
 *
-* @note		None
+* @note		Swaps byte order (Little-endian to Big-endian) before sending.
 *
 **************************************************************************/
 void sendMessage(int sockfd, struct sockaddr_in *server_addr, uint16_t *msg, size_t size) {
     uint16_t *buf = malloc(size);
+    if (buf == NULL) {
+        error_exit("Malloc failed");
+    }
 
     // Swap byte order (Little-endian to Big-endian)
     for (int i = 0; i < size / sizeof(uint16_t); ++i) {
@@ -176,7 +198,7 @@ void sendMessage(int sockfd, struct sockaddr_in *server_addr, uint16_t *msg, siz
 /**************************************************************************/
 /**
 *
-* @brief    Connects to the given port
+* @brief    Checks if the given port is open, initializes address structure in case of success
 *
 * @param	port_number - port number
 * @param	[out] tcp_server_addr - the structure describing an Internet socket address
@@ -228,6 +250,7 @@ int findOpenPort(unsigned int port_number, struct sockaddr_in *tcp_server_addr) 
 * @brief    Connects to the given port
 *
 * @param	tcp_server_addr - a pointer to the structure describing an Internet socket address
+* @param	timeout_ms - timeout for blocking read operation
 *
 * @return	file descriptor
 *
@@ -248,7 +271,6 @@ int connectToPort(struct sockaddr_in *tcp_server_addr, int timeout_ms) {
         close(sockfd);
     }
 
-    // TODO: Adjust the timeout to get a balance between correct output and precise time interval
     // Set read timeout to 10ms
     struct timeval timeout = {0, timeout_ms};
     if (setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout)) < 0) {

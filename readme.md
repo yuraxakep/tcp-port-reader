@@ -19,7 +19,7 @@ to standard output, the data can be redirected to a file if desired.
 Build and usage:
 ```
 make client1
-./client1
+./task1/client1
 ```
 
 ## Frequencies, amplitues and shapes:
@@ -32,16 +32,17 @@ negative direction, the frequency is calculated by finding the average time peri
 of the wave, the shape is visualized using the `pyplot` library. Text and image logs
 from each port can be found in the `/logs` directory. 
 
-/***********************************************************************************/
+------------------------------------------------------------------------------------
 Port:               Frequency:                  Amplitude:                  Shape:
 4001                0.49 Hz                     5 V                         Sine
 4002                0.27 Hz                     5 V                         Triangle
-4003                0.16 Hz (irregular)         5 V                         Square
-/***********************************************************************************/
+4003                0.18 Hz (irregular)         5 V                         Square
+------------------------------------------------------------------------------------
 
 Ussage:
 ```
 make tcp_logger
+cd utilities/
 ./tcp_logger port_number log_duration_sec (i.e. ./tcp_logger 4001 30)
 python3 log_analyzer.py path_to_log_file (i.e. python3 log_analyzer.py ../logs/4001)
 ```
@@ -79,7 +80,7 @@ standard output, and then the cycle repeats.
 Build and usage:
 ```
 make client2
-./client2
+./task2/client2
 ```
 
 ## Control Protocol:
@@ -96,6 +97,7 @@ for all valid objects. Logs can be found in the `/logs` directory.
 Ussage:
 ```
 make udp_logger
+cd utilities/
 ./udp_logger
 python3 text_filter.py file_path (i.e. python3 text_filter.py ../logs/property_ch1)
 ```
@@ -112,5 +114,13 @@ port 4003.
 
 Ussage:
 ```
+cd utilities/
 python3 timing_test.py file_path timming (i.e. python3 timing_test.py ../logs/client2 20)
 ```
+
+## Shared library:
+All the logic responsible for checking whether a given port is open, automatically
+obtaining an IP address, connecting to a port, reading from and writing to a port,
+is implemented inside the `client_lib`. Functions for analyzing incoming data and
+controlling the server are also implemented inside the `client_lib`. All .c programs
+in this repository have dependencies on the `client_lib`.
